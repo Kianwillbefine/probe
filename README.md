@@ -9,13 +9,28 @@ The current scaffold is intentionally small:
 - bundled sample trace in `public/samples/release-note-run.jsonl`
 - three-pane replay UI: timeline, recorded run state, event inspector
 - local JSONL import, export, and event JSON copy
-- no backend or SDK adapter yet
+- deterministic AI SDK-shaped trace writer demo
+- no backend or hosted collector yet
 
 ## Run
 
 ```bash
 pnpm install
 pnpm dev
+```
+
+## Quick demo
+
+Generate a local trace:
+
+```bash
+pnpm demo:ai-sdk
+```
+
+Then start the UI and import the generated file:
+
+```text
+.probe/runs/ai-sdk-demo.jsonl
 ```
 
 ## Trace shape
@@ -32,12 +47,34 @@ You can try the bundled sample trace at:
 public/samples/release-note-run.jsonl
 ```
 
-## Next slice
+## AI SDK writer shape
 
-The next useful implementation slice is a trace writer adapter:
+The current demo uses an AI SDK-shaped writer without calling a live model, so it
+runs without provider credentials. A live integration can record the same
+writer events from AI SDK callbacks around `streamText` or `generateText`:
 
-```text
-Vercel AI SDK stream/tool events -> normalized ProbeEvent JSONL
+```ts
+import { AiSdkTraceWriter } from './src/adapters/aiSdkTraceWriter'
+
+const trace = new AiSdkTraceWriter({
+  runId: crypto.randomUUID(),
+  model: 'gpt-4.1-mini',
+})
+
+trace.recordUserPrompt(prompt)
+trace.recordModelCall({ model: 'gpt-4.1-mini', prompt })
+
+// In AI SDK tool callbacks:
+trace.recordToolCall({ name: 'getWeather', args: { city: 'Hangzhou' } })
+trace.recordToolResult({ name: 'getWeather', result: weather })
+
+// In the finish callback:
+trace.recordAssistantFinish({ text, finishReason, usage })
+
+const jsonl = trace.toJsonl()
 ```
 
-Start with one adapter, preferably Vercel AI SDK, before adding Claude Code hooks or MCP proxy support.
+## Next slice
+
+The next useful implementation slice is a live AI SDK example that wraps a real
+`streamText` call and writes the trace file automatically.
