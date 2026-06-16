@@ -8,12 +8,14 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "check": "pnpm lint && pnpm build && pnpm check:demo",
-    "check:demo": "pnpm demo:ai-sdk",
+    "check:demo": "pnpm demo:ai-sdk && pnpm demo:ai-sdk-core",
     "demo:ai-sdk": "tsx examples/ai-sdk-basic/generateTrace.ts",
+    "demo:ai-sdk-core": "tsx examples/ai-sdk-core-mock/generateTrace.ts",
     "lint": "eslint .",
     "preview": "vite preview"
   },
   "dependencies": {
+    "ai": "^6.0.206",
     "react": "^19.2.6",
     "react-dom": "^19.2.6"
   },

@@ -10,6 +10,7 @@ The current scaffold is intentionally small:
 - three-pane replay UI: timeline, recorded run state, event inspector
 - local JSONL import, export, and event JSON copy
 - deterministic AI SDK-shaped trace writer demo
+- no-key AI SDK Core mock-provider trace writer demo
 - no backend or hosted collector yet
 
 ## Run
@@ -33,6 +34,19 @@ Then start the UI and import the generated file:
 .probe/runs/ai-sdk-demo.jsonl
 ```
 
+Generate a trace from a real AI SDK Core `generateText` tool loop without API
+keys:
+
+```bash
+pnpm demo:ai-sdk-core
+```
+
+Then import:
+
+```text
+.probe/runs/ai-sdk-core-mock.jsonl
+```
+
 ## Trace shape
 
 The replay UI reads one JSON object per line:
@@ -49,9 +63,11 @@ public/samples/release-note-run.jsonl
 
 ## AI SDK writer shape
 
-The current demo uses an AI SDK-shaped writer without calling a live model, so it
-runs without provider credentials. A live integration can record the same
-writer events from AI SDK callbacks around `streamText` or `generateText`:
+The shaped demo feeds deterministic lifecycle snapshots into the writer. The AI
+SDK Core mock demo uses `generateText`, `MockLanguageModelV3`, and real tool
+callbacks, while still running without provider credentials. A live integration
+can record the same writer events from callbacks around `streamText` or
+`generateText`:
 
 ```ts
 import { AiSdkTraceWriter } from './src/adapters/aiSdkTraceWriter'
@@ -76,5 +92,5 @@ const jsonl = trace.toJsonl()
 
 ## Next slice
 
-The next useful implementation slice is a live AI SDK example that wraps a real
-`streamText` call and writes the trace file automatically.
+The next useful implementation slice is a tiny package-facing adapter API so a
+real AI SDK app can create a Probe trace with less custom callback glue.
