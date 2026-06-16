@@ -71,36 +71,41 @@ public/samples/release-note-run.jsonl
 public/samples/ai-sdk-core-mock.jsonl
 ```
 
-## AI SDK writer shape
+## AI SDK helper shape
 
 The shaped demo feeds deterministic lifecycle snapshots into the writer. The AI
 SDK Core mock demo uses `generateText`, `MockLanguageModelV3`, and real tool
-callbacks, while still running without provider credentials. A live integration
-can record the same writer events from callbacks around `streamText` or
-`generateText`:
+callbacks, while still running without provider credentials.
+
+For an AI SDK Core `generateText` call, create a Probe helper and spread its
+callbacks into the generation options:
 
 ```ts
-import { AiSdkTraceWriter } from './src/adapters/aiSdkTraceWriter'
+import { writeFile } from 'node:fs/promises'
+import { generateText } from 'ai'
+import { createAiSdkProbe } from './src/adapters/aiSdkTraceWriter'
 
-const trace = new AiSdkTraceWriter({
+const probe = createAiSdkProbe({
   runId: crypto.randomUUID(),
   model: 'gpt-4.1-mini',
+  prompt,
 })
 
-trace.recordUserPrompt(prompt)
-trace.recordModelCall({ model: 'gpt-4.1-mini', prompt })
+try {
+  await generateText({
+    model,
+    prompt,
+    tools,
+    ...probe.callbacks,
+  })
+} catch (error) {
+  probe.recordError(error)
+}
 
-// In AI SDK tool callbacks:
-trace.recordToolCall({ name: 'getWeather', args: { city: 'Hangzhou' } })
-trace.recordToolResult({ name: 'getWeather', result: weather })
-
-// In the finish callback:
-trace.recordAssistantFinish({ text, finishReason, usage })
-
-const jsonl = trace.toJsonl()
+await writeFile('.probe/runs/my-run.jsonl', probe.toJsonl())
 ```
 
 ## Next slice
 
-The next useful implementation slice is a tiny package-facing adapter API so a
-real AI SDK app can create a Probe trace with less custom callback glue.
+The next useful implementation slice is import polish: drag-and-drop JSONL plus
+clearer empty/error states for first-time users.

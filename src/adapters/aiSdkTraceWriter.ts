@@ -1,5 +1,11 @@
 import { ProbeTraceWriter } from '../lib/traceWriter'
 import type { ProbeEvent } from '../types/trace'
+import type {
+  GenerateTextOnFinishCallback,
+  GenerateTextOnToolCallFinishCallback,
+  GenerateTextOnToolCallStartCallback,
+  ToolSet,
+} from 'ai'
 
 export type AiSdkTraceWriterOptions = {
   runId: string
@@ -32,6 +38,29 @@ export type AiSdkFinish = {
     outputTokens?: number
     totalTokens?: number
   }
+}
+
+export type AiSdkProbeOptions = AiSdkTraceWriterOptions & {
+  prompt: string
+  includeToolDuration?: boolean
+  timestamps?: {
+    userPrompt?: string
+    modelCall?: string
+    toolCall?: string
+    toolResult?: string
+    assistantFinish?: string
+  }
+}
+
+export type AiSdkProbe<TOOLS extends ToolSet = ToolSet> = {
+  writer: AiSdkTraceWriter
+  callbacks: {
+    experimental_onToolCallStart: GenerateTextOnToolCallStartCallback<TOOLS>
+    experimental_onToolCallFinish: GenerateTextOnToolCallFinishCallback<TOOLS>
+    onFinish: GenerateTextOnFinishCallback<TOOLS>
+  }
+  recordError: (error: unknown) => ProbeEvent
+  toJsonl: () => string
 }
 
 export class AiSdkTraceWriter {
@@ -151,4 +180,65 @@ export class AiSdkTraceWriter {
   toJsonl(): string {
     return this.writer.toJsonl()
   }
+}
+
+export function createAiSdkProbe<TOOLS extends ToolSet = ToolSet>(options: AiSdkProbeOptions): AiSdkProbe<TOOLS> {
+  const writer = new AiSdkTraceWriter(options)
+
+  writer.recordUserPrompt(options.prompt, options.timestamps?.userPrompt)
+  writer.recordModelCall({
+    model: options.model,
+    prompt: options.prompt,
+    timestamp: options.timestamps?.modelCall,
+  })
+
+  return {
+    writer,
+    callbacks: {
+      experimental_onToolCallStart: ({ toolCall }) => {
+        writer.recordToolCall({
+          id: toolCall.toolCallId,
+          timestamp: options.timestamps?.toolCall,
+          name: toolCall.toolName,
+          args: toRecord(toolCall.input),
+        })
+      },
+      experimental_onToolCallFinish: (event) => {
+        if (event.success) {
+          writer.recordToolResult({
+            toolCallId: event.toolCall.toolCallId,
+            timestamp: options.timestamps?.toolResult,
+            name: event.toolCall.toolName,
+            durationMs: options.includeToolDuration === false ? undefined : event.durationMs,
+            result: event.output,
+          })
+          return
+        }
+
+        writer.recordError(event.error)
+      },
+      onFinish: ({ text, finishReason, totalUsage }) => {
+        writer.recordAssistantFinish({
+          timestamp: options.timestamps?.assistantFinish,
+          text,
+          finishReason,
+          usage: {
+            inputTokens: totalUsage.inputTokens,
+            outputTokens: totalUsage.outputTokens,
+            totalTokens: totalUsage.totalTokens,
+          },
+        })
+      },
+    },
+    recordError: (error: unknown) => writer.recordError(error),
+    toJsonl: () => writer.toJsonl(),
+  }
+}
+
+function toRecord(value: unknown): Record<string, unknown> {
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    return value as Record<string, unknown>
+  }
+
+  return { value }
 }

@@ -3,7 +3,7 @@ import { dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { generateText, jsonSchema, stepCountIs, tool } from 'ai'
 import { MockLanguageModelV3 } from 'ai/test'
-import { AiSdkTraceWriter } from '../../src/adapters/aiSdkTraceWriter'
+import { createAiSdkProbe } from '../../src/adapters/aiSdkTraceWriter'
 import { parseProbeJsonl } from '../../src/lib/traceJsonl'
 
 const outputPath = '.probe/runs/ai-sdk-core-mock.jsonl'
@@ -82,21 +82,23 @@ const model = new MockLanguageModelV3({
   doGenerate: async () => responses[responseIndex++] ?? responses.at(-1),
 })
 
-const trace = new AiSdkTraceWriter({
+const probe = createAiSdkProbe({
   runId,
   model: modelId,
+  prompt,
+  includeToolDuration: false,
   title: 'AI SDK Core mock weather tool demo',
   startedAt: '2026-06-16T12:30:00.000+08:00',
+  timestamps: {
+    userPrompt: '2026-06-16T12:30:00.120+08:00',
+    modelCall: '2026-06-16T12:30:00.240+08:00',
+    toolCall: '2026-06-16T12:30:01.080+08:00',
+    toolResult: '2026-06-16T12:30:01.122+08:00',
+    assistantFinish: '2026-06-16T12:30:02.400+08:00',
+  },
 })
 
 try {
-  trace.recordUserPrompt(prompt, '2026-06-16T12:30:00.120+08:00')
-  trace.recordModelCall({
-    model: modelId,
-    prompt,
-    timestamp: '2026-06-16T12:30:00.240+08:00',
-  })
-
   await generateText({
     model,
     prompt,
@@ -121,46 +123,14 @@ try {
       }),
     },
     stopWhen: stepCountIs(2),
-    experimental_onToolCallStart: ({ toolCall }) => {
-      trace.recordToolCall({
-        id: toolCall.toolCallId,
-        timestamp: '2026-06-16T12:30:01.080+08:00',
-        name: toolCall.toolName,
-        args: toolCall.input,
-      })
-    },
-    experimental_onToolCallFinish: (event) => {
-      if (event.success) {
-        trace.recordToolResult({
-          toolCallId: event.toolCall.toolCallId,
-          timestamp: '2026-06-16T12:30:01.122+08:00',
-          name: event.toolCall.toolName,
-          result: event.output,
-        })
-        return
-      }
-
-      trace.recordError(event.error)
-    },
-    onFinish: ({ text, finishReason, totalUsage }) => {
-      trace.recordAssistantFinish({
-        timestamp: '2026-06-16T12:30:02.400+08:00',
-        text,
-        finishReason,
-        usage: {
-          inputTokens: totalUsage.inputTokens,
-          outputTokens: totalUsage.outputTokens,
-          totalTokens: totalUsage.totalTokens,
-        },
-      })
-    },
+    ...probe.callbacks,
   })
 } catch (error) {
-  trace.recordError(error)
+  probe.recordError(error)
 }
 
 await mkdir(dirname(outputPath), { recursive: true })
-await writeFile(outputPath, trace.toJsonl())
+await writeFile(outputPath, probe.toJsonl())
 
 const generated = await readFile(outputPath, 'utf8')
 const run = parseProbeJsonl(generated, { filename: fileURLToPath(import.meta.url) })
