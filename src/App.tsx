@@ -1,6 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState, type ChangeEvent } from 'react'
 import './App.css'
-import { mockRun, type ProbeEvent, type ProbeEventType } from './data/mockRun'
+import { mockRun } from './data/mockRun'
+import { formatProbeEventJson, parseProbeJsonl, serializeProbeJsonl } from './lib/traceJsonl'
+import type { ProbeEvent, ProbeEventType, ProbeRun } from './types/trace'
 
 const eventLabels: Record<ProbeEventType, string> = {
   user_message: 'User',
@@ -20,31 +22,76 @@ function formatDuration(value?: number) {
   return `${(value / 1000).toFixed(1)} s`
 }
 
-function toPrettyJson(event: ProbeEvent) {
-  return JSON.stringify(
-    {
-      id: event.id,
-      parentId: event.parentId,
-      type: event.type,
-      source: event.source,
-      status: event.status,
-      durationMs: event.durationMs,
-      payload: event.payload,
-    },
-    null,
-    2,
-  )
+function formatEventTime(event: ProbeEvent, run: ProbeRun) {
+  const startMs = Date.parse(run.startedAt)
+  const eventMs = Date.parse(event.timestamp)
+
+  if (!Number.isFinite(startMs) || !Number.isFinite(eventMs) || eventMs < startMs) {
+    return event.timestamp
+  }
+
+  const elapsedMs = eventMs - startMs
+  const seconds = Math.floor(elapsedMs / 1000)
+  const minutes = Math.floor(seconds / 60)
+  const remainingSeconds = String(seconds % 60).padStart(2, '0')
+  const milliseconds = String(elapsedMs % 1000).padStart(3, '0')
+
+  return `${String(minutes).padStart(2, '0')}:${remainingSeconds}.${milliseconds}`
 }
 
 function App() {
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [run, setRun] = useState(mockRun)
   const [selectedEventId, setSelectedEventId] = useState(mockRun.events[2].id)
+  const [importError, setImportError] = useState<string | undefined>()
+  const [copyState, setCopyState] = useState<'idle' | 'success' | 'error'>('idle')
   const selectedEvent = useMemo(
-    () => mockRun.events.find((event) => event.id === selectedEventId) ?? mockRun.events[0],
-    [selectedEventId],
+    () => run.events.find((event) => event.id === selectedEventId) ?? run.events[0],
+    [run.events, selectedEventId],
   )
 
-  const selectedIndex = mockRun.events.findIndex((event) => event.id === selectedEvent.id)
-  const replayEvents = mockRun.events.slice(0, selectedIndex + 1)
+  const selectedIndex = run.events.findIndex((event) => event.id === selectedEvent.id)
+  const replayEvents = run.events.slice(0, selectedIndex + 1)
+
+  async function handleImport(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+
+    if (!file) return
+
+    try {
+      const importedRun = parseProbeJsonl(await file.text(), { filename: file.name })
+
+      setRun(importedRun)
+      setSelectedEventId(importedRun.events[0].id)
+      setImportError(undefined)
+      setCopyState('idle')
+    } catch (error) {
+      setImportError(error instanceof Error ? error.message : 'Import failed.')
+    }
+  }
+
+  function handleExport() {
+    const blob = new Blob([serializeProbeJsonl(run)], { type: 'application/x-ndjson;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+
+    link.href = url
+    link.download = `${run.id}.jsonl`
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+
+  async function handleCopy() {
+    setCopyState('idle')
+
+    try {
+      await copyText(formatProbeEventJson(selectedEvent))
+      setCopyState('success')
+    } catch {
+      setCopyState('error')
+    }
+  }
 
   return (
     <main className="shell">
@@ -54,35 +101,53 @@ function App() {
           <h1>Agent run replay debugger</h1>
         </div>
         <div className="topbar-actions" aria-label="Run actions">
-          <button type="button" className="icon-button" title="Import trace">
+          <input
+            ref={fileInputRef}
+            className="file-input"
+            type="file"
+            accept=".jsonl,.json,application/json,application/x-ndjson"
+            onChange={handleImport}
+          />
+          <button
+            type="button"
+            className="icon-button"
+            title="Import trace"
+            onClick={() => fileInputRef.current?.click()}
+          >
             Import
           </button>
-          <button type="button" className="primary-action">
+          <button type="button" className="primary-action" onClick={handleExport}>
             Export JSONL
           </button>
         </div>
       </header>
 
+      {importError ? (
+        <div className="notice error" role="alert">
+          {importError}
+        </div>
+      ) : null}
+
       <section className="summary-grid" aria-label="Run summary">
         <article>
           <span>Run</span>
-          <strong>{mockRun.id}</strong>
+          <strong>{run.id}</strong>
         </article>
         <article>
           <span>Model</span>
-          <strong>{mockRun.model}</strong>
+          <strong>{run.model}</strong>
         </article>
         <article>
           <span>Duration</span>
-          <strong>{formatDuration(mockRun.totalDurationMs)}</strong>
+          <strong>{formatDuration(run.totalDurationMs)}</strong>
         </article>
         <article>
           <span>Events</span>
-          <strong>{mockRun.events.length}</strong>
+          <strong>{run.events.length}</strong>
         </article>
         <article>
           <span>Tool calls</span>
-          <strong>{mockRun.toolCalls}</strong>
+          <strong>{run.toolCalls}</strong>
         </article>
       </section>
 
@@ -91,13 +156,13 @@ function App() {
           <div className="panel-heading">
             <div>
               <p className="eyebrow">Timeline</p>
-              <h2>{mockRun.title}</h2>
+              <h2>{run.title}</h2>
             </div>
-            <span className={`status-pill ${mockRun.status}`}>{mockRun.status}</span>
+            <span className={`status-pill ${run.status}`}>{run.status}</span>
           </div>
 
           <ol className="timeline">
-            {mockRun.events.map((event) => (
+            {run.events.map((event) => (
               <li key={event.id}>
                 <button
                   type="button"
@@ -107,7 +172,7 @@ function App() {
                   <span className={`event-dot ${event.status}`} />
                   <span className="event-main">
                     <span className="event-meta">
-                      <span>{event.time}</span>
+                      <span>{formatEventTime(event, run)}</span>
                       <span>{eventLabels[event.type]}</span>
                     </span>
                     <strong>{event.title}</strong>
@@ -127,7 +192,7 @@ function App() {
               <h2>Recorded run state</h2>
             </div>
             <span className="frame-counter">
-              {selectedIndex + 1}/{mockRun.events.length}
+              {selectedIndex + 1}/{run.events.length}
             </span>
           </div>
 
@@ -175,14 +240,49 @@ function App() {
           <div className="payload-block">
             <div className="payload-title">
               <span>Payload</span>
-              <button type="button">Copy</button>
+              <div className="copy-actions">
+                {copyState !== 'idle' ? (
+                  <span className={`copy-state ${copyState}`} role="status">
+                    {copyState === 'success' ? 'Copied' : 'Failed'}
+                  </span>
+                ) : null}
+                <button type="button" onClick={handleCopy}>
+                  Copy
+                </button>
+              </div>
             </div>
-            <pre>{toPrettyJson(selectedEvent)}</pre>
+            <pre>{formatProbeEventJson(selectedEvent)}</pre>
           </div>
         </aside>
       </section>
     </main>
   )
+}
+
+async function copyText(value: string) {
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(value)
+      return
+    } catch {
+      // Fall through for local preview contexts where Clipboard API is blocked.
+    }
+  }
+
+  const textarea = document.createElement('textarea')
+  textarea.value = value
+  textarea.setAttribute('readonly', 'true')
+  textarea.style.position = 'fixed'
+  textarea.style.left = '-9999px'
+  document.body.append(textarea)
+  textarea.select()
+
+  const copied = document.execCommand('copy')
+  textarea.remove()
+
+  if (!copied) {
+    throw new Error('Copy failed.')
+  }
 }
 
 export default App

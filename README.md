@@ -5,23 +5,39 @@
 The current scaffold is intentionally small:
 
 - React + TypeScript + Vite app
-- mock agent run data in `src/data/mockRun.ts`
+- shared normalized run and event types
+- bundled sample trace in `public/samples/release-note-run.jsonl`
 - three-pane replay UI: timeline, recorded run state, event inspector
+- local JSONL import, export, and event JSON copy
 - no backend or SDK adapter yet
 
 ## Run
 
 ```bash
-npm install
-npm run dev
+pnpm install
+pnpm dev
+```
+
+## Trace shape
+
+The replay UI reads one JSON object per line:
+
+```text
+adapter event -> normalized ProbeEvent -> .probe/runs/{runId}.jsonl -> replay UI
+```
+
+You can try the bundled sample trace at:
+
+```text
+public/samples/release-note-run.jsonl
 ```
 
 ## Next slice
 
-The next useful implementation slice is a JSONL trace writer:
+The next useful implementation slice is a trace writer adapter:
 
 ```text
-adapter event -> normalized ProbeEvent -> .probe/runs/{runId}.jsonl -> replay UI
+Vercel AI SDK stream/tool events -> normalized ProbeEvent JSONL
 ```
 
 Start with one adapter, preferably Vercel AI SDK, before adding Claude Code hooks or MCP proxy support.

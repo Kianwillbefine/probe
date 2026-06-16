@@ -1,54 +1,20 @@
-export type ProbeEventType =
-  | 'user_message'
-  | 'model_call'
-  | 'assistant_delta'
-  | 'tool_call'
-  | 'tool_result'
-  | 'approval_request'
-  | 'approval_result'
-  | 'ui_event'
-  | 'error'
-
-export type ProbeEventStatus = 'pending' | 'running' | 'success' | 'warning' | 'error'
-
-export type ProbeEvent = {
-  id: string
-  parentId?: string
-  time: string
-  type: ProbeEventType
-  source: 'ui' | 'agent' | 'model' | 'tool' | 'human'
-  title: string
-  summary: string
-  status: ProbeEventStatus
-  durationMs?: number
-  payload: Record<string, unknown>
-}
-
-export type ProbeRun = {
-  id: string
-  title: string
-  status: ProbeEventStatus
-  startedAt: string
-  model: string
-  totalDurationMs: number
-  tokenCount: number
-  toolCalls: number
-  events: ProbeEvent[]
-}
+import type { ProbeRun } from '../types/trace'
 
 export const mockRun: ProbeRun = {
   id: 'run_local_001',
   title: 'Draft a release note from repo changes',
   status: 'success',
-  startedAt: '2026-06-16T11:34:19+08:00',
+  startedAt: '2026-06-16T11:34:19.000+08:00',
   model: 'gpt-5-codex',
   totalDurationMs: 18940,
   tokenCount: 8420,
   toolCalls: 4,
   events: [
     {
+      runId: 'run_local_001',
       id: 'evt_001',
-      time: '00:00.000',
+      timestamp: '2026-06-16T11:34:19.000+08:00',
+      sequence: 1,
       type: 'user_message',
       source: 'ui',
       title: 'User prompt submitted',
@@ -60,9 +26,11 @@ export const mockRun: ProbeRun = {
       },
     },
     {
+      runId: 'run_local_001',
       id: 'evt_002',
       parentId: 'evt_001',
-      time: '00:00.214',
+      timestamp: '2026-06-16T11:34:19.214+08:00',
+      sequence: 2,
       type: 'model_call',
       source: 'model',
       title: 'Planner model call',
@@ -77,9 +45,11 @@ export const mockRun: ProbeRun = {
       },
     },
     {
+      runId: 'run_local_001',
       id: 'evt_003',
       parentId: 'evt_002',
-      time: '00:01.902',
+      timestamp: '2026-06-16T11:34:20.902+08:00',
+      sequence: 3,
       type: 'tool_call',
       source: 'tool',
       title: 'Tool call: git.diff',
@@ -92,9 +62,11 @@ export const mockRun: ProbeRun = {
       },
     },
     {
+      runId: 'run_local_001',
       id: 'evt_004',
       parentId: 'evt_003',
-      time: '00:02.438',
+      timestamp: '2026-06-16T11:34:21.438+08:00',
+      sequence: 4,
       type: 'tool_result',
       source: 'tool',
       title: 'Tool result received',
@@ -109,9 +81,11 @@ export const mockRun: ProbeRun = {
       },
     },
     {
+      runId: 'run_local_001',
       id: 'evt_005',
       parentId: 'evt_002',
-      time: '00:03.104',
+      timestamp: '2026-06-16T11:34:22.104+08:00',
+      sequence: 5,
       type: 'assistant_delta',
       source: 'agent',
       title: 'Assistant stream started',
@@ -122,9 +96,11 @@ export const mockRun: ProbeRun = {
       },
     },
     {
+      runId: 'run_local_001',
       id: 'evt_006',
       parentId: 'evt_005',
-      time: '00:05.720',
+      timestamp: '2026-06-16T11:34:24.720+08:00',
+      sequence: 6,
       type: 'approval_request',
       source: 'agent',
       title: 'Approval requested',
@@ -137,9 +113,11 @@ export const mockRun: ProbeRun = {
       },
     },
     {
+      runId: 'run_local_001',
       id: 'evt_007',
       parentId: 'evt_006',
-      time: '00:07.066',
+      timestamp: '2026-06-16T11:34:26.066+08:00',
+      sequence: 7,
       type: 'approval_result',
       source: 'human',
       title: 'Approval granted',
@@ -152,9 +130,11 @@ export const mockRun: ProbeRun = {
       },
     },
     {
+      runId: 'run_local_001',
       id: 'evt_008',
       parentId: 'evt_007',
-      time: '00:07.220',
+      timestamp: '2026-06-16T11:34:26.220+08:00',
+      sequence: 8,
       type: 'tool_call',
       source: 'tool',
       title: 'Tool call: fs.writeFile',
@@ -167,9 +147,11 @@ export const mockRun: ProbeRun = {
       },
     },
     {
+      runId: 'run_local_001',
       id: 'evt_009',
       parentId: 'evt_008',
-      time: '00:08.012',
+      timestamp: '2026-06-16T11:34:27.012+08:00',
+      sequence: 9,
       type: 'ui_event',
       source: 'ui',
       title: 'UI state committed',
@@ -182,9 +164,11 @@ export const mockRun: ProbeRun = {
       },
     },
     {
+      runId: 'run_local_001',
       id: 'evt_010',
       parentId: 'evt_005',
-      time: '00:18.940',
+      timestamp: '2026-06-16T11:34:37.940+08:00',
+      sequence: 10,
       type: 'assistant_delta',
       source: 'agent',
       title: 'Final answer completed',

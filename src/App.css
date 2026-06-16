@@ -47,6 +47,10 @@ h2 {
   gap: 10px;
 }
 
+.file-input {
+  display: none;
+}
+
 button {
   font: inherit;
 }
@@ -68,6 +72,16 @@ button {
   color: #ffffff;
   border-color: #17324d;
   font-weight: 700;
+}
+
+.notice {
+  margin: 12px 28px 0;
+  border: 1px solid #efb8b8;
+  border-radius: 6px;
+  padding: 10px 12px;
+  background: #fff5f5;
+  color: #8d1f1f;
+  font-size: 13px;
 }
 
 .summary-grid {
@@ -359,6 +373,25 @@ button {
   font-size: 12px;
 }
 
+.copy-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.copy-state {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.copy-state.success {
+  color: #0f6f4d;
+}
+
+.copy-state.error {
+  color: #9f1d1d;
+}
+
 pre {
   min-height: 0;
   flex: 1;
@@ -391,6 +424,10 @@ pre {
   .summary-grid {
     grid-template-columns: 1fr 1fr;
     padding-inline: 18px;
+  }
+
+  .notice {
+    margin-inline: 18px;
   }
 
   .workspace {
