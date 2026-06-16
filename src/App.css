@@ -84,11 +84,77 @@ button {
   font-size: 13px;
 }
 
+.sample-strip {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 28px 0;
+}
+
+.sample-strip > div:first-child {
+  min-width: 0;
+}
+
+.sample-strip strong {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+.sample-actions {
+  max-width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+}
+
+.sample-button {
+  height: 32px;
+  border: 1px solid #c7d0db;
+  border-radius: 6px;
+  padding: 0 10px;
+  background: #ffffff;
+  color: #2c3a49;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.sample-button:hover {
+  background: #f5f7f9;
+}
+
+.sample-button:active,
+.icon-button:active,
+.primary-action:active,
+.payload-title button:active,
+.event-row:active {
+  transform: scale(0.98);
+}
+
+.sample-button.active {
+  border-color: #17324d;
+  background: #e8f0f7;
+  color: #17324d;
+  font-weight: 700;
+}
+
+.sample-button:disabled {
+  cursor: wait;
+  opacity: 0.68;
+}
+
 .summary-grid {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 1px;
-  padding: 1px 28px 0;
+  padding: 12px 28px 0;
   background: #d7dde3;
 }
 
@@ -424,6 +490,18 @@ pre {
   .summary-grid {
     grid-template-columns: 1fr 1fr;
     padding-inline: 18px;
+  }
+
+  .sample-strip {
+    align-items: stretch;
+    flex-direction: column;
+    padding-inline: 18px;
+  }
+
+  .sample-actions {
+    justify-content: flex-start;
+    width: 100%;
+    overflow-x: auto;
   }
 
   .notice {

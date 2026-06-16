@@ -16,6 +16,22 @@ const eventLabels: Record<ProbeEventType, string> = {
   error: 'Error',
 }
 
+const sampleTraces = [
+  {
+    id: 'release-note',
+    label: 'Release note agent',
+    path: '/samples/release-note-run.jsonl',
+  },
+  {
+    id: 'ai-sdk-core',
+    label: 'AI SDK Core tool loop',
+    path: '/samples/ai-sdk-core-mock.jsonl',
+  },
+] as const
+
+type SampleTrace = (typeof sampleTraces)[number]
+type SampleTraceId = SampleTrace['id']
+
 function formatDuration(value?: number) {
   if (typeof value !== 'number') return 'instant'
   if (value < 1000) return `${value} ms`
@@ -44,6 +60,8 @@ function App() {
   const [run, setRun] = useState(mockRun)
   const [selectedEventId, setSelectedEventId] = useState(mockRun.events[2].id)
   const [importError, setImportError] = useState<string | undefined>()
+  const [activeSampleId, setActiveSampleId] = useState<SampleTraceId | undefined>()
+  const [loadingSampleId, setLoadingSampleId] = useState<SampleTraceId | undefined>()
   const [copyState, setCopyState] = useState<'idle' | 'success' | 'error'>('idle')
   const selectedEvent = useMemo(
     () => run.events.find((event) => event.id === selectedEventId) ?? run.events[0],
@@ -64,10 +82,35 @@ function App() {
 
       setRun(importedRun)
       setSelectedEventId(importedRun.events[0].id)
+      setActiveSampleId(undefined)
       setImportError(undefined)
       setCopyState('idle')
     } catch (error) {
       setImportError(error instanceof Error ? error.message : 'Import failed.')
+    }
+  }
+
+  async function handleLoadSample(sample: SampleTrace) {
+    setLoadingSampleId(sample.id)
+
+    try {
+      const response = await fetch(sample.path)
+
+      if (!response.ok) {
+        throw new Error(`Could not load ${sample.label}.`)
+      }
+
+      const sampleRun = parseProbeJsonl(await response.text(), { filename: sample.path })
+
+      setRun(sampleRun)
+      setSelectedEventId(sampleRun.events[0].id)
+      setActiveSampleId(sample.id)
+      setImportError(undefined)
+      setCopyState('idle')
+    } catch (error) {
+      setImportError(error instanceof Error ? error.message : 'Sample load failed.')
+    } finally {
+      setLoadingSampleId(undefined)
     }
   }
 
@@ -127,6 +170,26 @@ function App() {
           {importError}
         </div>
       ) : null}
+
+      <section className="sample-strip" aria-label="Bundled sample traces">
+        <div>
+          <p className="eyebrow">Samples</p>
+          <strong>{run.id}</strong>
+        </div>
+        <div className="sample-actions">
+          {sampleTraces.map((sample) => (
+            <button
+              key={sample.id}
+              type="button"
+              className={sample.id === activeSampleId ? 'sample-button active' : 'sample-button'}
+              disabled={Boolean(loadingSampleId)}
+              onClick={() => void handleLoadSample(sample)}
+            >
+              {loadingSampleId === sample.id ? 'Loading' : sample.label}
+            </button>
+          ))}
+        </div>
+      </section>
 
       <section className="summary-grid" aria-label="Run summary">
         <article>

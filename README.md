@@ -6,9 +6,10 @@ The current scaffold is intentionally small:
 
 - React + TypeScript + Vite app
 - shared normalized run and event types
-- bundled sample trace in `public/samples/release-note-run.jsonl`
+- bundled sample traces in `public/samples/`
 - three-pane replay UI: timeline, recorded run state, event inspector
 - local JSONL import, export, and event JSON copy
+- one-click bundled sample loading
 - deterministic AI SDK-shaped trace writer demo
 - no-key AI SDK Core mock-provider trace writer demo
 - no backend or hosted collector yet
@@ -22,7 +23,15 @@ pnpm dev
 
 ## Quick demo
 
-Generate a local trace:
+Open the app and load a bundled sample:
+
+```bash
+pnpm dev
+```
+
+Then click `Release note agent` or `AI SDK Core tool loop` in the sample strip.
+
+To generate a local trace yourself:
 
 ```bash
 pnpm demo:ai-sdk
@@ -59,6 +68,7 @@ You can try the bundled sample trace at:
 
 ```text
 public/samples/release-note-run.jsonl
+public/samples/ai-sdk-core-mock.jsonl
 ```
 
 ## AI SDK writer shape
