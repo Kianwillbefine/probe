@@ -3,10 +3,11 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "packageManager": "pnpm@10.34.1",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "check": "npm run lint && npm run build",
+    "check": "pnpm lint && pnpm build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
